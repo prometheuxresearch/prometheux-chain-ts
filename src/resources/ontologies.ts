@@ -42,10 +42,21 @@ export interface CreateFromContextParams {
 export class Ontologies extends APIResource {
   readonly snapshots: Snapshots = new Snapshots(this.http);
 
-  /** Creates (no `id`) or updates an ontology and returns its id. */
+  /**
+   * Creates (no `id`) or updates an ontology and returns its id.
+   *
+   * The backend replaces the whole record, so on update any field you leave
+   * out is read from the current ontology first and sent back unchanged.
+   */
   async save(params: SaveOntologyParams, options?: RequestOptions): Promise<string> {
-    const project: Record<string, unknown> = { id: params.id ?? null, name: params.name ?? null };
-    if (params.description !== undefined) project.description = params.description;
+    let { name, description } = params;
+    if (params.id && (name === undefined || description === undefined)) {
+      const current = await this.get(params.id, options);
+      name ??= current?.name;
+      description ??= current?.description;
+    }
+    const project: Record<string, unknown> = { id: params.id ?? null, name: name ?? null };
+    if (description !== undefined) project.description = description;
     const data = await this.http.call<{ ontology_id?: string; project_id?: string } | string>(
       "Ontology save",
       "POST",

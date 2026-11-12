@@ -7,6 +7,7 @@ export interface Recorded {
   url: URL;
   headers: Headers;
   body: unknown;
+  signal: AbortSignal | undefined;
 }
 
 type Responder = (req: Recorded) => Response | Promise<Response>;
@@ -22,6 +23,7 @@ export function mockClient(responders: Responder[], options: ClientOptions = {})
       url: new URL(String(input)),
       headers: new Headers(init?.headers),
       body,
+      signal: init?.signal ?? undefined,
     };
     calls.push(req);
     const responder = responders[Math.min(calls.length - 1, responders.length - 1)];

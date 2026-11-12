@@ -100,8 +100,8 @@ describe("request mapping", () => {
 
   it("refuses an empty delete instead of deleting everything", () => {
     const { px } = mockClient([() => ok(null)]);
-    expect(() => px.concepts.delete("ont1", [])).toThrow(/deleteAll/);
-    return expect(px.datasources.delete([])).rejects.toThrow(/deleteAll/);
+    expect(() => px.concepts.delete("ont1", [])).toThrow(/must not be empty/);
+    return expect(px.datasources.delete([])).rejects.toThrow(/must not be empty/);
   });
 
   it("uploads files as multipart form data", async () => {

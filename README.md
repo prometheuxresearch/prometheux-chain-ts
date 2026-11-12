@@ -164,7 +164,7 @@ The Python SDK is a flat list of functions. Here they are grouped under resource
 | `export_workspace` / `import_workspace`                        | `workspace.export` / `workspace.import`                                 |
 | `list_templates` / `import_template`                           | `templates.list` / `templates.import`                                   |
 | `connect_sources` / `list_sources`                             | `datasources.connect` / `datasources.list`                              |
-| `cleanup_sources`                                              | `datasources.delete(ids)` / `datasources.deleteAll()`                   |
+| `cleanup_sources`                                              | `datasources.delete(ids)`                                               |
 | `infer_schema` / `list_sheets`                                 | `datasources.inferSchema` / `datasources.listSheets`                    |
 | `list_demo_sources` / `refresh_sources`                        | `datasources.listDemo` / `datasources.refresh`                          |
 | `preview_datasource` / `all_pairs_join`                        | `datasources.preview` / `datasources.allPairsJoin`                      |
@@ -174,7 +174,7 @@ The Python SDK is a flat list of functions. Here they are grouped under resource
 | `save_concept` / `rename_concept`                              | `concepts.save` / `concepts.rename`                                     |
 | `run_concept` / `run_concept_stream`                           | `concepts.run` / `concepts.runStream`                                   |
 | `list_concepts` / `reorder_concepts`                           | `concepts.list` / `concepts.reorder`                                    |
-| `cleanup_concepts`                                             | `concepts.delete(id, names)` / `concepts.deleteAll(id)`                 |
+| `cleanup_concepts`                                             | `concepts.delete(id, names)`                                            |
 | `fetch_results` / `search_results`                             | `concepts.fetchResults` / `concepts.searchResults`                      |
 | `query_concept`                                                | `concepts.query`                                                        |
 | `search_similar_concepts`                                      | `concepts.searchSimilar`                                                |
@@ -218,10 +218,15 @@ The Python SDK is a flat list of functions. Here they are grouped under resource
 | `translate_sql/rdf/owl_to_vadalog`                             | `vadalingo.sqlToVadalog` / `rdfToVadalog` / `owlToVadalog`              |
 | `Database(...)`                                                | a plain `Database` object (`{ databaseType, host, ... }`)               |
 
-Two deliberate differences from the Python SDK:
+Deliberate differences from the Python SDK:
 
-- Deleting "everything" needs its own method (`concepts.deleteAll`, `datasources.deleteAll`).
-  Passing an empty list to `delete` throws instead of wiping the ontology or workspace.
+- `delete` takes the ids or names to delete and throws on an empty list. There is no "delete
+  everything" call; the backend no longer supports one.
+- `ontologies.save({ id, ... })` keeps the fields you leave out. The backend replaces the whole
+  record, so the SDK reads the current name and description first; the Python SDK would reset
+  them.
+- `concepts.run` does not send `persist_outputs` unless you set it, so results stay fetchable (the
+  Python SDK sends `false`).
 - Downloads return a `FileDownload` handle instead of writing to the working directory. Call
   `saveTo(path)` to write it.
 

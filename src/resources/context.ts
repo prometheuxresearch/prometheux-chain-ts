@@ -41,8 +41,8 @@ export interface CreateContextNoteParams {
   /** Default `"user"`. */
   source?: ContextSource;
   pinned?: boolean;
-  /** Id of an older note this one replaces. */
-  supersedes?: string;
+  /** Id(s) of older notes this one replaces; they stop being used. */
+  supersedes?: string | string[];
   /** Default `"retrieved"`. */
   activation?: ContextActivation;
   title?: string;
@@ -117,7 +117,7 @@ export class Context extends APIResource {
       pinned: params.pinned ?? false,
       activation: params.activation ?? "retrieved",
     };
-    if (params.supersedes !== undefined) body.supersedes = params.supersedes;
+    if (params.supersedes !== undefined) body.supersedes = [params.supersedes].flat();
     if (params.title !== undefined) body.title = params.title;
     if (params.folderPath !== undefined) body.folder_path = params.folderPath;
     return this.http.call(

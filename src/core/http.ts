@@ -111,7 +111,7 @@ export class HttpClient {
         } catch (error) {
           throw deadline.translate(error);
         } finally {
-          deadline.clear();
+          deadline.stop();
         }
       } catch (error) {
         if (attempt >= retries || !isRetryable(error)) throw error;
@@ -144,7 +144,7 @@ export class HttpClient {
   ): AsyncGenerator<T, void, undefined> {
     const { response, deadline } = await this.#send(method, path, spec, options);
     if (!response.ok) {
-      deadline.clear();
+      deadline.stop();
       throw await this.#apiError(response);
     }
     try {
@@ -163,7 +163,7 @@ export class HttpClient {
         data: { status: "error", message: deadline.translate(error).message },
       } as T;
     } finally {
-      deadline.clear();
+      deadline.stop();
     }
   }
 
@@ -174,8 +174,9 @@ export class HttpClient {
     options: RequestOptions = {},
   ): Promise<FileDownload> {
     const { response, deadline } = await this.#send("GET", path, spec, options);
-    // The deadline only guards time-to-headers; a large body may take longer.
-    deadline.clear();
+    // The timeout only guards time-to-headers (a large body may take longer);
+    // the caller's signal still cancels the body.
+    deadline.stop();
     if (!response.ok) throw await this.#apiError(response);
     const disposition = response.headers.get("content-disposition") ?? "";
     const fromHeader = parseDispositionFilename(disposition);
@@ -198,6 +199,8 @@ export class HttpClient {
     url.searchParams.set("token", this.#token);
     if (this.#supabaseToken) url.searchParams.set("x_supabase_token", this.#supabaseToken);
 
+    // Fail before connecting: sending `init` is what starts the run server-side.
+    options.signal?.throwIfAborted();
     const socket = new WebSocket(url);
     socket.binaryType = "arraybuffer";
     const inbox = new SocketInbox(socket);
@@ -205,7 +208,13 @@ export class HttpClient {
     options.signal?.addEventListener("abort", onAbort, { once: true });
 
     try {
-      await inbox.opened(WS_CONNECT_TIMEOUT, this.baseUrl);
+      try {
+        await inbox.opened(WS_CONNECT_TIMEOUT, this.baseUrl);
+      } catch (error) {
+        options.signal?.throwIfAborted();
+        throw error;
+      }
+      options.signal?.throwIfAborted();
       socket.send(JSON.stringify(init ?? {}));
       const idle = positive(options.timeout, this.wsTimeout);
       while (true) {
@@ -278,7 +287,7 @@ export class HttpClient {
     try {
       return { response: await this.#fetch(this.#url(path, spec.query), init), deadline };
     } catch (error) {
-      deadline.clear();
+      deadline.stop();
       if (options.signal?.aborted && !deadline.timedOut) throw error;
       if (deadline.timedOut) throw deadline.translate(error);
       throw new APIConnectionError(
@@ -328,26 +337,27 @@ export function unwrapMessage(operation: string, envelope: Envelope): string | u
   return envelope.message;
 }
 
-/** Combines the caller's signal with a resettable timeout. */
+/**
+ * A resettable timeout combined with the caller's signal. `AbortSignal.any`
+ * keeps the caller's signal linked for the whole life of the request (including
+ * a download body read after `stop()`), without listeners to clean up.
+ */
 class Deadline {
   readonly signal: AbortSignal;
   timedOut = false;
   readonly #controller = new AbortController();
   readonly #ms: number;
-  readonly #outer: AbortSignal | undefined;
-  readonly #onOuterAbort = () => this.#controller.abort(this.#outer?.reason);
   #timer: ReturnType<typeof setTimeout> | undefined;
 
   constructor(ms: number, outer?: AbortSignal) {
     this.#ms = ms;
-    this.#outer = outer;
-    this.signal = this.#controller.signal;
-    if (outer?.aborted) this.#controller.abort(outer.reason);
-    outer?.addEventListener("abort", this.#onOuterAbort, { once: true });
+    this.signal = outer
+      ? AbortSignal.any([outer, this.#controller.signal])
+      : this.#controller.signal;
     this.reset();
   }
 
-  /** Restarts the countdown (used between stream chunks). */
+  /** Restarts the countdown (before each stream read). */
   reset(): void {
     clearTimeout(this.#timer);
     this.#timer = setTimeout(() => {
@@ -356,9 +366,9 @@ class Deadline {
     }, this.#ms);
   }
 
-  clear(): void {
+  /** Stops the countdown. The caller's signal can still abort the request. */
+  stop(): void {
     clearTimeout(this.#timer);
-    this.#outer?.removeEventListener("abort", this.#onOuterAbort);
   }
 
   /** Maps an abort caused by this deadline to `APITimeoutError`. */
@@ -372,6 +382,11 @@ class Deadline {
   }
 }
 
+/**
+ * Yields the lines of a streamed body. The idle timeout only runs while waiting
+ * on the network, never while the consumer handles a line, and the body is
+ * cancelled when the consumer stops early.
+ */
 async function* readLines(response: Response, deadline: Deadline): AsyncGenerator<string> {
   if (!response.body) return;
   const reader = response.body.pipeThrough(new TextDecoderStream()).getReader();
@@ -381,20 +396,25 @@ async function* readLines(response: Response, deadline: Deadline): AsyncGenerato
   const onAbort = () => void reader.cancel(signal.reason).catch(() => {});
   signal.addEventListener("abort", onAbort, { once: true });
   let buffer = "";
+  let finished = false;
   try {
     while (true) {
+      deadline.reset();
       const { value, done } = await reader.read();
+      deadline.stop();
       if (signal.aborted) throw signal.reason;
       if (done) break;
-      deadline.reset();
       buffer += value;
       const lines = buffer.split(/\r?\n/);
       buffer = lines.pop() ?? "";
       yield* lines;
     }
+    finished = true;
     if (buffer) yield buffer;
   } finally {
     signal.removeEventListener("abort", onAbort);
+    // A consumer that breaks out early must not leave the response open.
+    if (!finished) await reader.cancel().catch(() => {});
     reader.releaseLock();
   }
 }

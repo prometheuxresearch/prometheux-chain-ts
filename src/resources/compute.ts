@@ -29,17 +29,23 @@ export type MachinesOverview = Loose<{
 }>;
 
 export interface AvailabilityParams {
-  machineConfigs?: JsonObject[];
-  databricksConfigs?: JsonObject[];
+  /**
+   * `{ id }`: your user machine id or its catalog machine id. Available means
+   * the machine is enabled for compute and turned on.
+   */
+  machineConfigs?: { id: string } & JsonObject;
+  /** `cluster_id`, `host`, `auth_mode` and the matching credentials. */
+  databricksConfigs?: JsonObject;
 }
 
 export class ComputeResource extends APIResource {
   /**
-   * Checks whether machines / Databricks resources are reachable. Returns the
-   * whole envelope rather than throwing, because "unavailable" is a normal answer.
+   * Checks whether a machine and/or a Databricks cluster is reachable and
+   * returns the response envelope. An unreachable resource can also come back
+   * as an HTTP error, which is thrown as an `APIError`.
    */
   checkAvailability(params: AvailabilityParams, options?: RequestOptions): Promise<Envelope> {
-    if (!params.machineConfigs?.length && !params.databricksConfigs?.length) {
+    if (!params.machineConfigs && !params.databricksConfigs) {
       throw new TypeError("Provide at least one of machineConfigs or databricksConfigs");
     }
     const compute: Record<string, unknown> = {};

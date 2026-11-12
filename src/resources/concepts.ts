@@ -284,27 +284,14 @@ export class Concepts extends APIResource {
     );
   }
 
-  /** Deletes the named concepts. Use `deleteAll()` to empty the ontology. */
+  /** Deletes the named concepts. */
   delete(ontologyId: string, conceptNames: string[], options?: RequestOptions): Promise<unknown> {
-    if (conceptNames.length === 0) {
-      throw new TypeError("conceptNames must not be empty; use deleteAll() instead");
-    }
+    if (conceptNames.length === 0) throw new TypeError("conceptNames must not be empty");
     return this.http.call(
       "Concept delete",
       "POST",
       `/api/v1/concepts/${seg(ontologyId)}/cleanup`,
       { body: { concept_names: conceptNames } },
-      options,
-    );
-  }
-
-  /** Deletes every concept in the ontology. */
-  deleteAll(ontologyId: string, options?: RequestOptions): Promise<unknown> {
-    return this.http.call(
-      "Concept delete",
-      "POST",
-      `/api/v1/concepts/${seg(ontologyId)}/cleanup`,
-      { body: {} },
       options,
     );
   }

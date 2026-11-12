@@ -103,15 +103,16 @@ export class DataSources extends APIResource {
     return this.http.call("Data source list", "GET", "/api/v1/data/list", {}, options);
   }
 
-  /** Deletes the given data sources. Use `deleteAll()` to remove every source. */
+  /** Deletes the given data sources. */
   async delete(ids: string[], options?: RequestOptions): Promise<void> {
-    if (ids.length === 0) throw new TypeError("ids must not be empty; use deleteAll() instead");
-    await this.#cleanup(ids, options);
-  }
-
-  /** Deletes every data source in the workspace. */
-  async deleteAll(options?: RequestOptions): Promise<void> {
-    await this.#cleanup(null, options);
+    if (ids.length === 0) throw new TypeError("ids must not be empty");
+    const envelope = await this.http.request(
+      "POST",
+      "/api/v1/data/cleanup",
+      { body: { source_ids: ids } },
+      options,
+    );
+    unwrapMessage("Data source delete", envelope);
   }
 
   inferSchema(
@@ -199,16 +200,6 @@ export class DataSources extends APIResource {
       },
       options,
     );
-  }
-
-  async #cleanup(ids: string[] | null, options?: RequestOptions): Promise<void> {
-    const envelope = await this.http.request(
-      "POST",
-      "/api/v1/data/cleanup",
-      { body: { source_ids: ids } },
-      options,
-    );
-    unwrapMessage("Data source delete", envelope);
   }
 }
 

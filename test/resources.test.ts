@@ -186,14 +186,6 @@ const cases: Case[] = [
     returns: "void",
   },
   {
-    name: "datasources.deleteAll",
-    call: (px) => px.datasources.deleteAll(),
-    method: "POST",
-    path: "/api/v1/data/cleanup",
-    body: { source_ids: null },
-    returns: "void",
-  },
-  {
     name: "datasources.inferSchema",
     call: (px) => px.datasources.inferSchema(db),
     method: "POST",
@@ -366,13 +358,6 @@ const cases: Case[] = [
     method: "POST",
     path: "/api/v1/concepts/o1/cleanup",
     body: { concept_names: ["a"] },
-  },
-  {
-    name: "concepts.deleteAll",
-    call: (px) => px.concepts.deleteAll("o1"),
-    method: "POST",
-    path: "/api/v1/concepts/o1/cleanup",
-    body: {},
   },
   {
     name: "concepts.reorder",
@@ -648,9 +633,26 @@ const cases: Case[] = [
       source: "user",
       pinned: true,
       activation: "always",
-      supersedes: "n0",
+      supersedes: ["n0"],
       title: "Rounding",
       folder_path: "rules",
+    },
+  },
+  {
+    name: "context.create (supersedes several)",
+    call: (px) =>
+      px.context.create({ scope: "global", kind: "fact", text: "t", supersedes: ["n1", "n2"] }),
+    method: "POST",
+    path: "/api/v1/knowledge/context",
+    body: {
+      scope: "global",
+      scope_id: null,
+      kind: "fact",
+      text: "t",
+      source: "user",
+      pinned: false,
+      activation: "retrieved",
+      supersedes: ["n1", "n2"],
     },
   },
   {
@@ -998,10 +1000,10 @@ const cases: Case[] = [
   // ── Compute & machines (raw responses) ──────────────────────────────────
   {
     name: "compute.checkAvailability",
-    call: (px) => px.compute.checkAvailability({ machineConfigs: [{ id: "m1" }] }),
+    call: (px) => px.compute.checkAvailability({ machineConfigs: { id: "m1" } }),
     method: "POST",
     path: "/api/v1/compute/availability",
-    body: { compute: { machine_configs: [{ id: "m1" }] } },
+    body: { compute: { machine_configs: { id: "m1" } } },
     returns: "raw",
   },
   {
