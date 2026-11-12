@@ -1,0 +1,70 @@
+{
+  "name": "prometheux-chain",
+  "version": "0.1.0",
+  "description": "TypeScript SDK for Prometheux — build, evolve and deploy your ontologies.",
+  "keywords": [
+    "prometheux",
+    "vadalog",
+    "ontology",
+    "knowledge-graph",
+    "sdk"
+  ],
+  "homepage": "https://docs.prometheux.ai",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/prometheuxresearch/prometheux-chain-ts.git"
+  },
+  "license": "BSD-3-Clause",
+  "author": "Prometheux Limited",
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": {
+      "import": {
+        "types": "./dist/index.d.mts",
+        "default": "./dist/index.mjs"
+      },
+      "require": {
+        "types": "./dist/index.d.cts",
+        "default": "./dist/index.cjs"
+      }
+    },
+    "./package.json": "./package.json"
+  },
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.cts",
+  "files": [
+    "dist"
+  ],
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "build": "tsdown",
+    "dev": "tsdown --watch",
+    "typecheck": "tsc --noEmit && tsc --noEmit -p test",
+    "lint": "biome check .",
+    "format": "biome check --write .",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "check:package": "publint --strict && attw --pack . --profile node16",
+    "check": "npm run lint && npm run typecheck && npm test && npm run build && npm run check:package",
+    "prepublishOnly": "npm run check"
+  },
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  },
+  "devDependencies": {
+    "@arethetypeswrong/cli": "^0.18.5",
+    "@biomejs/biome": "^2.6.7",
+    "@types/node": "^22.20.5",
+    "@types/ws": "^8.18.2",
+    "publint": "^0.3.25",
+    "tsdown": "^0.23.7",
+    "typescript": "^7.0.2",
+    "vitest": "^5.1.0",
+    "ws": "^8.22.2"
+  }
+}

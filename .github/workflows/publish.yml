@@ -1,0 +1,45 @@
+# Merging a version bump into main publishes to npm. A merge that does not
+# change the version is a no-op. Publishing uses npm trusted publishing (OIDC),
+# so no npm token is stored in the repository.
+name: Publish
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+  id-token: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    environment: npm
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          registry-url: https://registry.npmjs.org
+          cache: npm
+      - name: Skip if this version is already published
+        id: guard
+        run: |
+          name=$(node -p "require('./package.json').name")
+          version=$(node -p "require('./package.json').version")
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          if npm view "$name@$version" version >/dev/null 2>&1; then
+            echo "publish=false" >> "$GITHUB_OUTPUT"
+            echo "$name@$version is already on npm; nothing to do."
+          else
+            echo "publish=true" >> "$GITHUB_OUTPUT"
+          fi
+      - if: steps.guard.outputs.publish == 'true'
+        run: npm ci
+      - if: steps.guard.outputs.publish == 'true'
+        run: npm publish --provenance --access public
+      - if: steps.guard.outputs.publish == 'true'
+        name: Tag the release
+        run: |
+          git tag "v${{ steps.guard.outputs.version }}"
+          git push origin "v${{ steps.guard.outputs.version }}"
