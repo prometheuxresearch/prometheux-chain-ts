@@ -429,13 +429,20 @@ class SocketInbox {
 
   opened(ms: number, baseUrl: string): Promise<void> {
     return new Promise((resolve, reject) => {
+      let settled = false;
       const fail = (reason: string) => {
+        // Settle once: on Node 22, close() on a failing socket re-dispatches
+        // error/close synchronously, which would otherwise recurse.
+        if (settled) return;
+        settled = true;
         clearTimeout(timer);
-        this.#socket.close();
+        if (this.#socket.readyState === WebSocket.CONNECTING) this.#socket.close();
         reject(new APIConnectionError(`WebSocket to ${baseUrl} failed: ${reason}`));
       };
       const timer = setTimeout(() => fail(`no handshake after ${ms / 1000}s`), ms);
       this.#socket.addEventListener("open", () => {
+        if (settled) return;
+        settled = true;
         clearTimeout(timer);
         resolve();
       });
