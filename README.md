@@ -235,6 +235,24 @@ npm run dev          # rebuild on change
 
 The version lives in `package.json`; `src/version.ts` must match it (a unit test enforces this).
 
+### Tests
+
+```bash
+npm test                 # all unit tests
+npm run test:coverage    # with coverage; fails below 95% statements/lines/functions, 80% branches
+```
+
+- `test/resources.test.ts`: the wire-format contract for every SDK method (HTTP method, path,
+  query, body, and what it resolves to), mirroring the Python SDK. A completeness test fails if a
+  public method is added without a case here.
+- `test/client.test.ts`, `test/core.test.ts`: configuration, error mapping, retries, timeouts,
+  cancellation, headers, uploads and downloads.
+- `test/streaming.test.ts`: NDJSON streams and the run-stream WebSocket (against a local `ws`
+  server).
+
+CI runs lint, typecheck, tests with coverage, build and package checks on Node 22 and 24, writes a
+coverage summary to the run page, and uploads the HTML report as an artifact.
+
 ## License
 
 BSD 3-Clause. See [LICENSE](LICENSE).

@@ -1,7 +1,7 @@
 {
   "name": "prometheux-chain",
   "version": "0.1.0",
-  "description": "TypeScript SDK for Prometheux — build, evolve and deploy your ontologies.",
+  "description": "TypeScript SDK for Prometheux \u2014 build, evolve and deploy your ontologies.",
   "keywords": [
     "prometheux",
     "vadalog",
@@ -49,8 +49,9 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "check:package": "publint --strict && attw --pack . --profile node16",
-    "check": "npm run lint && npm run typecheck && npm test && npm run build && npm run check:package",
-    "prepublishOnly": "npm run check"
+    "check": "npm run lint && npm run typecheck && npm run test:coverage && npm run build && npm run check:package",
+    "prepublishOnly": "npm run check",
+    "test:coverage": "vitest run --coverage"
   },
   "publishConfig": {
     "access": "public",
@@ -61,6 +62,7 @@
     "@biomejs/biome": "^2.6.7",
     "@types/node": "^22.20.5",
     "@types/ws": "^8.18.2",
+    "@vitest/coverage-v8": "^5.1.0",
     "publint": "^0.3.25",
     "tsdown": "^0.23.7",
     "typescript": "^7.0.2",
