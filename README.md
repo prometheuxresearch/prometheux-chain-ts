@@ -1,4 +1,4 @@
-# prometheux-chain
+# @pmtx/chain
 
 TypeScript SDK for [Prometheux](https://www.prometheux.ai): build, evolve and deploy your
 ontologies from Node.js. It is the TypeScript counterpart of the
@@ -13,13 +13,13 @@ backend surface.
 ## Install
 
 ```bash
-npm install prometheux-chain
+npm install @pmtx/chain
 ```
 
 ## Quick start
 
 ```ts
-import { Prometheux } from "prometheux-chain";
+import { Prometheux } from "@pmtx/chain";
 
 const px = new Prometheux({
   token: process.env.PMTX_TOKEN,
@@ -96,7 +96,7 @@ returned before the stream starts (bad token, plan limits) are thrown.
 ## Files
 
 ```ts
-import { fileFromPath } from "prometheux-chain";
+import { fileFromPath } from "@pmtx/chain";
 
 const { filePath } = await px.files.upload(await fileFromPath("./cities.csv"), { path: "inputs" });
 
@@ -124,7 +124,7 @@ filenames are reduced to a bare basename.
 All extend `PrometheuxError`.
 
 ```ts
-import { QuotaExceededError } from "prometheux-chain";
+import { QuotaExceededError } from "@pmtx/chain";
 
 try {
   await px.ontologies.save({ name: "one-too-many" });
@@ -141,7 +141,7 @@ Python SDK. Request parameters are `camelCase`. Every request, response and even
 exported:
 
 ```ts
-import type { Concept, ContextNote, RunStreamEvent, AgentEvent } from "prometheux-chain";
+import type { Concept, ContextNote, RunStreamEvent, AgentEvent } from "@pmtx/chain";
 ```
 
 Response types list the fields the backend guarantees and still allow extra ones, so new

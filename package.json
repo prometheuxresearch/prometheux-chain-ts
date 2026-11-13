@@ -1,5 +1,5 @@
 {
-  "name": "prometheux-chain",
+  "name": "@pmtx/chain",
   "version": "0.1.0",
   "description": "TypeScript SDK for Prometheux \u2014 build, evolve and deploy your ontologies.",
   "keywords": [

@@ -15,7 +15,7 @@ import { Vadalingo, Vadalog } from "./resources/vadalog.ts";
  * Client for the Prometheux platform.
  *
  * ```ts
- * import { Prometheux } from "prometheux-chain";
+ * import { Prometheux } from "@pmtx/chain";
  *
  * // Reads PMTX_TOKEN and JARVISPY_URL from the environment by default.
  * const px = new Prometheux();
