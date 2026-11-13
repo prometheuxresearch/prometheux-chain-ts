@@ -37,6 +37,13 @@ describe("configuration", () => {
     expect(() => new Prometheux({ token: "t" })).toThrow(PrometheuxError);
   });
 
+  it.each([
+    "https://api.prometheux.ai/jarvispy/<organization>/<username>",
+    "https://api.prometheux.ai/jarvispy/{organization}/{username}",
+  ])("rejects a URL that still has placeholders: %s", (baseUrl) => {
+    expect(() => new Prometheux({ token: "t", baseUrl })).toThrow(/placeholder/);
+  });
+
   it("sends the SDK user agent and optional Supabase token", async () => {
     const { px, calls } = mockClient([() => ok({ role: "admin" })], { supabaseToken: "sb" });
     await px.users.getRole();

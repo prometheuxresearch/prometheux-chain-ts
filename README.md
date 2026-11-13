@@ -93,6 +93,27 @@ for await (const event of px.concepts.runStream(ontologyId, "location", { runMod
 A stream that stalls or drops ends with a terminal `error` event instead of throwing. Errors
 returned before the stream starts (bad token, plan limits) are thrown.
 
+## Evaluating programs
+
+`px.vadalog.evaluate()` runs a Vadalog program without saving it as a concept:
+
+```ts
+const result = await px.vadalog.evaluate(program, { params: { min_total: 1000 } });
+```
+
+Each evaluation is tagged with an `executionId` (a random UUID unless you pass one). When the request
+times out or you abort it, the SDK stops that evaluation on the engine before throwing, so it does
+not keep the engine busy for the calls that follow. To stop runs yourself:
+
+```ts
+await px.vadalog.stop("my-run-id"); // only the evaluation sent with that executionId
+await px.vadalog.stop(); // every evaluation on your engine
+const { status } = await px.vadalog.status(); // "ready" or "busy"
+```
+
+Runnable examples, including `.vada` files, parameters and unit tests:
+[prometheux-chain-ts-examples](https://github.com/prometheuxresearch/prometheux-chain-ts-examples).
+
 ## Files
 
 ```ts
@@ -215,6 +236,7 @@ The Python SDK is a flat list of functions. Here they are grouped under resource
 | `revoke_token` / `revoke_specific_token` / `revoke_all_tokens` | `tokens.revokeCurrent` / `tokens.revoke` / `tokens.revokeAll`           |
 | `analyze_program` / `build_bind` / `parse_binds`               | `vadalog.analyze` / `vadalog.buildBind` / `vadalog.parseBinds`          |
 | `evaluate_program` / `validate_concept`                        | `vadalog.evaluate` / `vadalog.validate`                                 |
+| (none)                                                         | `vadalog.stop` / `vadalog.status`                                       |
 | `translate_sql/rdf/owl_to_vadalog`                             | `vadalingo.sqlToVadalog` / `rdfToVadalog` / `owlToVadalog`              |
 | `Database(...)`                                                | a plain `Database` object (`{ databaseType, host, ... }`)               |
 
@@ -227,6 +249,8 @@ Deliberate differences from the Python SDK:
   them.
 - `concepts.run` does not send `persist_outputs` unless you set it, so results stay fetchable (the
   Python SDK sends `false`).
+- `vadalog.evaluate` tags each evaluation with an `executionId` and stops it on the engine when
+  the request times out or is aborted. The Python SDK leaves it running.
 - Downloads return a `FileDownload` handle instead of writing to the working directory. Call
   `saveTo(path)` to write it.
 

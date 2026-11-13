@@ -1,6 +1,28 @@
+import { APITimeoutError } from "../core/errors.ts";
 import { APIResource, seg } from "../core/resource.ts";
-import type { Compute, JsonObject, RequestOptions } from "../core/types.ts";
+import type { Compute, Envelope, JsonObject, Loose, RequestOptions } from "../core/types.ts";
 import type { ConceptType } from "./concepts.ts";
+
+/** How long `evaluate` waits for the engine to acknowledge a stop. */
+const STOP_TIMEOUT = 10_000;
+
+export interface EvaluateParams {
+  /** Values for the program's `@param` declarations, pasted in as Vadalog text. */
+  params?: JsonObject;
+  compute?: Compute;
+  /**
+   * Tags the evaluation so `vadalog.stop(executionId)` stops it and nothing
+   * else. Default: a random UUID. 1 to 128 characters.
+   */
+  executionId?: string;
+}
+
+export type EngineStatus = Loose<{
+  status: "ready" | "busy" | (string & {});
+  runs_in_flight?: number;
+  engine_calls_in_flight?: number;
+  timestamp?: string;
+}>;
 
 export interface ProgramParams {
   /** Default `"logic"`. */
@@ -71,21 +93,60 @@ export class Vadalog extends APIResource {
     );
   }
 
-  /** Evaluates a program directly, without saving it as a concept. */
-  evaluate(
+  /**
+   * Evaluates a program directly, without saving it as a concept.
+   *
+   * The evaluation is tagged with `executionId` (a random UUID unless you pass
+   * one). If the request times out or `options.signal` aborts it, the SDK stops
+   * that evaluation on the engine before throwing, so it does not keep the
+   * engine busy for the calls that follow.
+   */
+  async evaluate(
     program: string,
-    params: { params?: JsonObject; compute?: Compute } = {},
+    params: EvaluateParams = {},
     options?: RequestOptions,
   ): Promise<unknown> {
-    const body: Record<string, unknown> = { program, params: params.params ?? {} };
+    const executionId = params.executionId ?? globalThis.crypto.randomUUID();
+    const body: Record<string, unknown> = {
+      program,
+      params: params.params ?? {},
+      execution_id: executionId,
+    };
     if (params.compute) body.compute = params.compute;
-    return this.http.call(
-      "Vadalog evaluate",
-      "POST",
-      "/api/v1/vadalog/evaluate",
-      { body },
+    try {
+      return await this.http.call(
+        "Vadalog evaluate",
+        "POST",
+        "/api/v1/vadalog/evaluate",
+        { body },
+        options,
+      );
+    } catch (error) {
+      if (error instanceof APITimeoutError || options?.signal?.aborted) {
+        await this.stop(executionId, { timeout: STOP_TIMEOUT }).catch(() => {});
+      }
+      throw error;
+    }
+  }
+
+  /**
+   * Stops a running evaluation. With `executionId`, only the evaluation sent
+   * with that id is stopped; without it, every evaluation on your engine is.
+   * Resolves to the server's reply as is: stopping when nothing is running is
+   * not an error.
+   */
+  stop(executionId?: string, options?: RequestOptions): Promise<Envelope> {
+    return this.http.request(
+      "GET",
+      "/api/v1/vadalog/stop",
+      { query: { execution_id: executionId } },
       options,
     );
+  }
+
+  /** Whether your engine is idle (`"ready"`) or evaluating (`"busy"`). */
+  status(options?: RequestOptions): Promise<EngineStatus> {
+    return this.http.call("Vadalog status", "GET", "/api/v1/vadalog/status", {}, options);
   }
 
   /**

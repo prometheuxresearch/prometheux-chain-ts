@@ -85,6 +85,12 @@ export class HttpClient {
           "(e.g. https://api.prometheux.ai/jarvispy/<organization>/<username>).",
       );
     }
+    if (/[<>{}]/.test(baseUrl)) {
+      throw new PrometheuxError(
+        `The backend URL still contains a placeholder: ${baseUrl}. ` +
+          "Replace <organization> and <username> (or {organization} and {username}) with yours.",
+      );
+    }
     this.#token = token;
     this.#supabaseToken = options.supabaseToken ?? env("SUPABASE_TOKEN");
     this.baseUrl = baseUrl.replace(/\/+$/, "");

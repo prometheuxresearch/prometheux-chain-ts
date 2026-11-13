@@ -1126,10 +1126,31 @@ const cases: Case[] = [
   },
   {
     name: "vadalog.evaluate",
-    call: (px) => px.vadalog.evaluate("a(1).", { params: { x: 1 }, compute }),
+    call: (px) => px.vadalog.evaluate("a(1).", { params: { x: 1 }, compute, executionId: "run-1" }),
     method: "POST",
     path: "/api/v1/vadalog/evaluate",
-    body: { program: "a(1).", params: { x: 1 }, compute },
+    body: { program: "a(1).", params: { x: 1 }, execution_id: "run-1", compute },
+  },
+  {
+    name: "vadalog.stop",
+    call: (px) => px.vadalog.stop("run-1"),
+    method: "GET",
+    path: "/api/v1/vadalog/stop",
+    query: { execution_id: "run-1" },
+    returns: "raw",
+  },
+  {
+    name: "vadalog.stop (every evaluation)",
+    call: (px) => px.vadalog.stop(),
+    method: "GET",
+    path: "/api/v1/vadalog/stop",
+    returns: "raw",
+  },
+  {
+    name: "vadalog.status",
+    call: (px) => px.vadalog.status(),
+    method: "GET",
+    path: "/api/v1/vadalog/status",
   },
   {
     name: "vadalog.validate",
