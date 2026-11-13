@@ -1,16 +1,21 @@
-# Merging a version bump into main publishes to npm. A merge that does not
-# change the version is a no-op. Publishing uses npm trusted publishing (OIDC),
-# so no npm token is stored in the repository.
+# Merging a version bump into main stages that version on npm. It goes live
+# only when a maintainer approves it with 2FA: on npmjs.com (Settings → Staged
+# Packages) or with `npm stage approve <stage-id>`. CI cannot publish on its
+# own, so a leaked GitHub token or a bad merge cannot ship a release.
 #
-# Off until npm is set up: the job only runs when the repository variable
-# NPM_PUBLISH_ENABLED is "true" (Settings → Secrets and variables → Actions →
-# Variables). Every attempt writes a provenance entry to the public sigstore
-# log, so it must not run before publishing can actually succeed.
+# Once a version is live, the next run of this workflow tags it vX.Y.Z. Run it
+# by hand (Actions → Publish → Run workflow) right after approving to tag at
+# once. A run that finds nothing to stage or tag does nothing.
+#
+# Publishing uses npm trusted publishing (OIDC), so no npm token is stored in
+# the repository. The job only runs when the repository variable
+# NPM_PUBLISH_ENABLED is "true".
 name: Publish
 
 on:
   push:
     branches: [main]
+  workflow_dispatch:
 
 permissions:
   contents: write
@@ -28,24 +33,51 @@ jobs:
           node-version: 24
           registry-url: https://registry.npmjs.org
           cache: npm
-      - name: Skip if this version is already published
-        id: guard
+      - name: Decide whether to stage or tag
+        id: plan
         run: |
           name=$(node -p "require('./package.json').name")
           version=$(node -p "require('./package.json').version")
+          echo "name=$name" >> "$GITHUB_OUTPUT"
           echo "version=$version" >> "$GITHUB_OUTPUT"
-          if npm view "$name@$version" version >/dev/null 2>&1; then
-            echo "publish=false" >> "$GITHUB_OUTPUT"
-            echo "$name@$version is already on npm; nothing to do."
+          if ! npm view "$name@$version" version >/dev/null 2>&1; then
+            echo "action=stage" >> "$GITHUB_OUTPUT"
+          elif [ -n "$(git ls-remote --tags origin "refs/tags/v$version")" ]; then
+            echo "action=none" >> "$GITHUB_OUTPUT"
+            echo "$name@$version is live and tagged; nothing to do."
           else
-            echo "publish=true" >> "$GITHUB_OUTPUT"
+            echo "action=tag" >> "$GITHUB_OUTPUT"
           fi
-      - if: steps.guard.outputs.publish == 'true'
+      # `npm stage` needs npm 11.15 or newer.
+      - if: steps.plan.outputs.action == 'stage'
+        run: npm install --global npm@11
+      - if: steps.plan.outputs.action == 'stage'
         run: npm ci
-      - if: steps.guard.outputs.publish == 'true'
-        run: npm publish --provenance --access public
-      - if: steps.guard.outputs.publish == 'true'
+      - if: steps.plan.outputs.action == 'stage'
+        name: Stage the release
+        env:
+          RELEASE: ${{ steps.plan.outputs.name }}@${{ steps.plan.outputs.version }}
+        run: |
+          set +e
+          npm stage publish --provenance --access public 2>&1 | tee stage.log
+          status=${PIPESTATUS[0]}
+          set -e
+          # A later push before approval stages the same version again; the
+          # registry refuses, and the pending stage is still the one to approve.
+          if [ "$status" -ne 0 ] && grep -qiE "already (been )?staged|already exists" stage.log; then
+            echo "::notice::$RELEASE is already staged and waiting for approval."
+            exit 0
+          fi
+          [ "$status" -eq 0 ] || exit "$status"
+          {
+            echo "## $RELEASE is staged"
+            echo
+            echo "Approve it with 2FA to publish: npmjs.com → Settings → Staged Packages,"
+            echo "or \`npm stage approve <stage-id>\` (the id is in the log above)."
+            echo "Then run this workflow again to tag the release."
+          } >> "$GITHUB_STEP_SUMMARY"
+      - if: steps.plan.outputs.action == 'tag'
         name: Tag the release
         run: |
-          git tag "v${{ steps.guard.outputs.version }}"
-          git push origin "v${{ steps.guard.outputs.version }}"
+          git tag "v${{ steps.plan.outputs.version }}"
+          git push origin "v${{ steps.plan.outputs.version }}"
