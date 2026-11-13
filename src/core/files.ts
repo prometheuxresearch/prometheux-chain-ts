@@ -1,13 +1,20 @@
-import { basename } from "node:path";
+import { readLocalFile, writeLocalFile } from "./platform.ts";
 
 /** Anything the SDK can upload. Use `fileFromPath()` for a file on disk. */
 export type Uploadable = Blob | Uint8Array | ArrayBuffer;
 
-/** Opens a local file as a lazily-read `File`, ready to pass to any upload method. */
+/**
+ * Opens a local file as a lazily-read `File`, ready to pass to any upload
+ * method. Node.js only: in a browser, upload a `File` from an `<input>`.
+ */
 export async function fileFromPath(path: string, filename?: string): Promise<File> {
-  const { openAsBlob } = await import("node:fs");
-  const blob = await openAsBlob(path);
-  return new File([blob], filename ?? basename(path), { type: blob.type });
+  const blob = await readLocalFile(path);
+  return new File([blob], filename ?? baseName(path), { type: blob.type });
+}
+
+/** The last segment of a path, with either separator. */
+function baseName(path: string): string {
+  return path.split(/[\\/]/).filter(Boolean).pop() ?? path;
 }
 
 /** Normalises an upload into a `Blob` and picks the filename sent to the server. */
@@ -60,19 +67,10 @@ export class FileDownload {
 
   /**
    * Streams the file to disk and returns the path written. `destPath` is used
-   * verbatim; it defaults to `filename` in the current directory.
+   * verbatim; it defaults to `filename` in the current directory. Node.js only.
    */
   async saveTo(destPath: string = this.filename): Promise<string> {
-    const [{ createWriteStream }, { Readable }, { pipeline }] = await Promise.all([
-      import("node:fs"),
-      import("node:stream"),
-      import("node:stream/promises"),
-    ]);
-    const body = this.response.body;
-    const source = body
-      ? Readable.fromWeb(body as import("node:stream/web").ReadableStream)
-      : Readable.from([]);
-    await pipeline(source, createWriteStream(destPath));
+    await writeLocalFile(this.response.body, destPath);
     return destPath;
   }
 }

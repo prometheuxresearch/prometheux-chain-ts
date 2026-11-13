@@ -264,12 +264,12 @@ export class HttpClient {
   }
 
   #headers(spec: RequestSpec, options: RequestOptions): Headers {
-    const headers = new Headers({
-      Accept: "application/json",
-      "User-Agent": `prometheux-chain-ts/${VERSION} node/${globalThis.process?.version ?? "unknown"}`,
-      ...this.#defaultHeaders,
-      Authorization: `Bearer ${this.#token}`,
-    });
+    const headers = new Headers({ Accept: "application/json" });
+    // Browsers set their own User-Agent and ignore ours.
+    const node = globalThis.process?.versions?.node;
+    if (node) headers.set("User-Agent", `prometheux-chain-ts/${VERSION} node/v${node}`);
+    for (const [key, value] of Object.entries(this.#defaultHeaders)) headers.set(key, value);
+    headers.set("Authorization", `Bearer ${this.#token}`);
     if (spec.body !== undefined && !spec.form) headers.set("Content-Type", "application/json");
     if (this.#supabaseToken) headers.set("X-Supabase-Token", this.#supabaseToken);
     for (const [key, value] of Object.entries(options.headers ?? {})) headers.set(key, value);

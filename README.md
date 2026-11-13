@@ -1,13 +1,14 @@
 # @pmtx/chain
 
 TypeScript SDK for [Prometheux](https://www.prometheux.ai): build, evolve and deploy your
-ontologies from Node.js. It is the TypeScript counterpart of the
+ontologies from Node.js or the browser. It is the TypeScript counterpart of the
 [`prometheux-chain`](https://pypi.org/project/prometheux-chain/) Python SDK and covers the same
 backend surface.
 
 - Fully typed requests, responses, stream events and errors.
-- ESM and CommonJS builds, zero runtime dependencies.
-- Native `fetch` and `WebSocket`. Requires Node.js 22 or later.
+- ESM and CommonJS builds for Node.js 22 or later, and an ESM build for browsers. Zero runtime
+  dependencies.
+- Native `fetch` and `WebSocket`.
 - Streaming via `for await`, cancellation via `AbortSignal`, per-call timeouts.
 
 ## Install
@@ -127,6 +128,25 @@ await download.saveTo("./cities-copy.csv"); // or .text(), .blob(), .arrayBuffer
 
 Uploads accept a `Blob`, `File`, `Uint8Array` or `ArrayBuffer`. Server-supplied download
 filenames are reduced to a bare basename.
+
+`fileFromPath()` and `saveTo()` use the file system, so they work in Node.js only. In a browser,
+upload a `File` from an `<input type="file">` and read downloads with `.blob()` or `.text()`.
+
+## Browsers
+
+The same import works in a browser app. Bundlers (Vite, webpack, esbuild, Rollup) pick the browser
+build through the package's `browser` export condition; it has no Node.js imports. Browsers have no
+environment variables, so pass `token` and `baseUrl` explicitly:
+
+```ts
+const px = new Prometheux({
+  token,
+  baseUrl: "https://api.prometheux.ai/jarvispy/<organization>/<username>",
+});
+```
+
+A token grants full access to its account. Use the SDK directly in the browser only for internal
+tools or your own pages; in a public app, keep the token on a server and call the SDK there.
 
 ## Errors
 
@@ -258,7 +278,7 @@ Deliberate differences from the Python SDK:
 
 ```bash
 npm install
-npm run check        # lint, typecheck, unit tests, build, publint + are-the-types-wrong
+npm run check        # lint, typecheck, unit tests, build, package checks, browser bundle check
 npm run dev          # rebuild on change
 ```
 

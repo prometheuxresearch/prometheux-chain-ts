@@ -1,7 +1,7 @@
 {
   "name": "@pmtx/chain",
-  "version": "0.1.1",
-  "description": "TypeScript SDK for Prometheux \u2014 build, evolve and deploy your ontologies.",
+  "version": "0.1.2",
+  "description": "TypeScript SDK for Prometheux — build, evolve and deploy your ontologies.",
   "keywords": [
     "prometheux",
     "vadalog",
@@ -20,6 +20,10 @@
   "sideEffects": false,
   "exports": {
     ".": {
+      "browser": {
+        "types": "./dist/index.d.mts",
+        "default": "./dist/browser.js"
+      },
       "import": {
         "types": "./dist/index.d.mts",
         "default": "./dist/index.mjs"
@@ -49,9 +53,10 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "check:package": "publint --strict && attw --pack . --profile node16",
-    "check": "npm run lint && npm run typecheck && npm run test:coverage && npm run build && npm run check:package",
+    "check": "npm run lint && npm run typecheck && npm run test:coverage && npm run build && npm run check:package && npm run check:browser",
     "prepublishOnly": "npm run check",
-    "test:coverage": "vitest run --coverage"
+    "test:coverage": "vitest run --coverage",
+    "check:browser": "node scripts/check-browser.mjs"
   },
   "publishConfig": {
     "access": "public",
@@ -63,6 +68,7 @@
     "@types/node": "^22.20.5",
     "@types/ws": "^8.18.2",
     "@vitest/coverage-v8": "^5.1.0",
+    "esbuild": "^0.28.2",
     "publint": "^0.3.25",
     "tsdown": "^0.23.7",
     "typescript": "^7.0.2",

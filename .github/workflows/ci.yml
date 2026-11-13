@@ -38,6 +38,8 @@ jobs:
         run: npm run build
       - name: Package checks (publint, are-the-types-wrong)
         run: npm run check:package
+      - name: Browser bundle check
+        run: npm run check:browser
 
       - name: Coverage summary
         if: always() && matrix.node == 24 && hashFiles('coverage/coverage-summary.json') != ''
